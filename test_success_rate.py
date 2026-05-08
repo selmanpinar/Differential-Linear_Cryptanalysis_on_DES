@@ -1,7 +1,7 @@
 """
-Makaledeki başarı oranlarını doğrula:
-  - 8 yapı (512 chosen PT) ->  %80 başarı beklentisi
-  - 12 yapı (768 chosen PT) -> %95 başarı beklentisi
+Verify the success rates reported in the paper:
+  - 8 structures (512 chosen PT)  -> expected 80% success
+  - 12 structures (768 chosen PT) -> expected 95% success
 """
 
 import random
@@ -10,7 +10,7 @@ from dl_attack import attack, rank_candidates
 
 
 def run_trials(num_structs, num_trials, list_size=1):
-    """num_trials rastgele anahtarla saldırıyı çalıştır."""
+    """Run the attack with random keys for num_trials trials."""
     top1_hits = 0
     topN_hits = 0
     ranks = []
@@ -20,7 +20,7 @@ def run_trials(num_structs, num_trials, list_size=1):
         key = random.getrandbits(64)
         counts, totals, K1_true, K8_true = attack(num_structs, key, seed=seed)
         ranked = rank_candidates(counts, totals)
-        # Doğru aday kaçıncı?
+        # What is the rank of the correct candidate?
         found_rank = None
         for r, (_, k1, k8, *_rest) in enumerate(ranked, 1):
             if k1 == K1_true and k8 == K8_true:
@@ -32,12 +32,12 @@ def run_trials(num_structs, num_trials, list_size=1):
         if found_rank is not None and found_rank <= list_size:
             topN_hits += 1
         print(f"  trial {trial+1:2d}: (K1,1={K1_true:2d}, K8,1={K8_true:2d}) "
-              f"sıra={found_rank}")
-    print(f"\n--- {num_structs} yapı, {num_trials} deneme ---")
-    print(f"Top-1 başarı: {top1_hits}/{num_trials} = {100*top1_hits/num_trials:.1f}%")
+              f"rank={found_rank}")
+    print(f"\n--- {num_structs} structures, {num_trials} trials ---")
+    print(f"Top-1 success: {top1_hits}/{num_trials} = {100*top1_hits/num_trials:.1f}%")
     if list_size > 1:
-        print(f"Top-{list_size} başarı: {topN_hits}/{num_trials} = {100*topN_hits/num_trials:.1f}%")
-    print(f"Sıralamalar: {ranks}")
+        print(f"Top-{list_size} success: {topN_hits}/{num_trials} = {100*topN_hits/num_trials:.1f}%")
+    print(f"Ranks: {ranks}")
     return top1_hits, topN_hits
 
 
