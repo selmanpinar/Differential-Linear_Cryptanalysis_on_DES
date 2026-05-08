@@ -64,8 +64,10 @@ Python implementation of the Langford & Hellman paper from CRYPTO '94.
 ## Running
 
 ```bash
-# Single run: 8 structures ≈ 512 chosen plaintexts, fixed seed
+# Single run: 8 structures ≈ 512 chosen plaintexts, fixed seed 42
 python dl_attack.py 8 42
+# Single run: 12 structures ≈ 768 chosen plaintexts, fixed seed 25
+python dl_attack.py 12 25
 
 # Measure success rate over multiple trials:
 python test_success_rate.py 8 10 8     # 8 structures, 10 trials, top-8
