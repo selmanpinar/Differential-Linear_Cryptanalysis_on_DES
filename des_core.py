@@ -1,10 +1,11 @@
 """
-DES temel yapı taşları: S-box'lar, permütasyonlar, key schedule, f fonksiyonu.
-FIPS PUB 46 bit numaralandırması kullanılır (soldan sağa, 1'den başlayarak).
-Makalede olduğu gibi IP ve IP^-1 ihmal edilir (kripto-analitik açıdan önemsiz).
+DES core building blocks: S-boxes, permutations, key schedule, f-function.
+FIPS PUB 46 bit numbering is used (left to right, starting from 1).
+As in the paper, IP and IP^-1 are omitted
+(cryptanalytically irrelevant).
 """
 
-# ---- S-box'lar (DES standardı) ----
+# ---- S-boxes (DES standard) ----
 S_BOXES = [
     # S1
     [[14, 4, 13, 1, 2, 15, 11, 8, 3, 10, 6, 12, 5, 9, 0, 7],
@@ -48,7 +49,7 @@ S_BOXES = [
      [2, 1, 14, 7, 4, 10, 8, 13, 15, 12, 9, 0, 3, 5, 6, 11]],
 ]
 
-# ---- Expansion (E) permütasyonu: 32 -> 48 ----
+# ---- Expansion (E) permutation: 32 -> 48 ----
 E = [32, 1, 2, 3, 4, 5,
      4, 5, 6, 7, 8, 9,
      8, 9, 10, 11, 12, 13,
@@ -58,7 +59,7 @@ E = [32, 1, 2, 3, 4, 5,
      24, 25, 26, 27, 28, 29,
      28, 29, 30, 31, 32, 1]
 
-# ---- P permütasyonu (S-box çıktılarından sonra) ----
+# ---- P permutation (after S-box outputs) ----
 P = [16, 7, 20, 21, 29, 12, 28, 17,
      1, 15, 23, 26, 5, 18, 31, 10,
      2, 8, 24, 14, 32, 27, 3, 9,
@@ -84,55 +85,56 @@ PC2 = [14, 17, 11, 24, 1, 5, 3, 28,
 SHIFTS = [1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1]
 
 
-# ==================== Yardımcı fonksiyonlar ====================
+# ==================== Helper functions ====================
 
 def permute(block, table, n_in):
-    """FIPS bit numaralandırmasıyla permütasyon.
-    block: tamsayı (n_in bit genişliğinde, MSB=bit 1).
-    table: her eleman 1..n_in arası kaynak bit numarası.
-    return: len(table)-bit tamsayı (MSB=çıktının 1. biti).
+    """Permutation using FIPS bit numbering.
+    block: integer of width n_in bits (MSB=bit 1).
+    table: each element is a source bit position in 1..n_in.
+    return: integer of len(table) bits (MSB=output bit 1).
     """
     out = 0
     for i, src in enumerate(table):
-        # src. biti al (MSB=1)
+        # Extract source bit (MSB=1)
         bit = (block >> (n_in - src)) & 1
         out = (out << 1) | bit
     return out
 
 
 def get_bit(block, pos, width):
-    """FIPS numaralandırması: pos=1 MSB."""
+    """FIPS numbering: pos=1 means MSB."""
     return (block >> (width - pos)) & 1
 
 
 def sbox_lookup(sbox_idx, six_bits):
-    """6-bit giriş -> 4-bit çıkış. S-box indeksi 0..7."""
-    # Makaledeki notasyona göre giriş (x1,x2,x3,x4,x5,x6), x1=MSB
+    """6-bit input -> 4-bit output. S-box index 0..7."""
+    # According to the notation in the paper:
+    # input = (x1,x2,x3,x4,x5,x6), x1=MSB
     row = ((six_bits >> 5) & 1) * 2 + (six_bits & 1)
     col = (six_bits >> 1) & 0x0F
     return S_BOXES[sbox_idx][row][col]
 
 
 def f_function(R, subkey):
-    """DES round fonksiyonu: 32-bit R + 48-bit subkey -> 32-bit çıktı."""
-    # Genişletme
+    """DES round function: 32-bit R + 48-bit subkey -> 32-bit output."""
+    # Expansion
     expanded = permute(R, E, 32)
     # XOR
     x = expanded ^ subkey
-    # S-box'lar
+    # S-boxes
     sbox_out = 0
     for i in range(8):
         six = (x >> (42 - 6 * i)) & 0x3F
         sbox_out = (sbox_out << 4) | sbox_lookup(i, six)
-    # P permütasyonu
+    # P permutation
     return permute(sbox_out, P, 32)
 
 
 # ==================== Key schedule ====================
 
 def key_schedule(key64):
-    """64-bit anahtardan 16 adet 48-bit alt-anahtar üret."""
-    # PC1: 64 -> 56 bit
+    """Generate 16 48-bit subkeys from a 64-bit key."""
+    # PC1: 64 -> 56 bits
     key56 = permute(key64, PC1, 64)
     C = (key56 >> 28) & 0x0FFFFFFF
     D = key56 & 0x0FFFFFFF
@@ -149,12 +151,12 @@ def key_schedule(key64):
     return subkeys
 
 
-# ==================== DES şifreleme (N round, IP yok) ====================
+# ==================== DES encryption (N rounds, without IP) ====================
 
 def des_encrypt_n_rounds(plaintext64, subkeys, n_rounds):
-    """IP ve IP^-1 olmadan n-round DES.
-    plaintext64: 64-bit tamsayı, (L0,R0) olarak yorumlanır.
-    return: 64-bit (Ln, Rn).
+    """n-round DES without IP and IP^-1.
+    plaintext64: 64-bit integer, interpreted as (L0,R0).
+    return: 64-bit integer (Ln, Rn).
     """
     L = (plaintext64 >> 32) & 0xFFFFFFFF
     R = plaintext64 & 0xFFFFFFFF
@@ -163,16 +165,16 @@ def des_encrypt_n_rounds(plaintext64, subkeys, n_rounds):
     return (L << 32) | R
 
 
-# ==================== Hızlı sanity check ====================
+# ==================== Quick sanity check ====================
 
 if __name__ == "__main__":
-    # Basit sanity: f fonksiyonu çıktıları 32 bit olmalı
+    # Simple sanity check: f-function outputs should be 32 bits
     import random
     random.seed(0)
     key = random.getrandbits(64)
     sks = key_schedule(key)
-    print(f"Örnek 48-bit subkey K1: {sks[0]:012x}")
+    print(f"Example 48-bit subkey K1: {sks[0]:012x}")
     pt = random.getrandbits(64)
     ct = des_encrypt_n_rounds(pt, sks, 8)
-    print(f"PT={pt:016x}  -> CT (8 round)={ct:016x}")
+    print(f"PT={pt:016x}  -> CT (8 rounds)={ct:016x}")
     print("DES core sanity OK.")
